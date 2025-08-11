@@ -111,8 +111,8 @@ func TestProperty_RoundTrip_Quick(t *testing.T) {
 	}
 	prop := func(o1, o2 jsonObject) bool {
 		// compute diff and patch, must equal
-		d := DiffRoot(o1.M, o2.M)
-		p := PatchRoot(o1.M, d)
+		d := Diff(o1.M, o2.M)
+		p := Patch(o1.M, d)
 		if !reflect.DeepEqual(p, o2.M) {
 			// serialize for stable diagnostics
 			b1, _ := json.Marshal(o1.M)
@@ -183,8 +183,8 @@ func FuzzRoundTripJSON(f *testing.F) {
 			m2 = map[string]any{"_": v2}
 		}
 
-		d := DiffRoot(m1, m2)
-		p := PatchRoot(m1, d)
+		d := Diff(m1, m2)
+		p := Patch(m1, d)
 		if !reflect.DeepEqual(p, m2) {
 			// Not expected to fail; crash to file interesting cases
 			t.Fatalf("round-trip mismatch\ns1=%s\ns2=%s\ndiff=%v\npatched=%v", s1, s2, d, p)

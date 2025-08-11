@@ -9,9 +9,9 @@ import (
 
 // Json diff implementation ported from the Scala reference.
 
-// DiffRoot computes the JSON diff between two parsed JSON values and returns
+// Diff computes the JSON diff between two parsed JSON values and returns
 // an object (map) at the root. If there is no difference, an empty object is returned.
-func DiffRoot(a, b any) map[string]any {
+func Diff(a, b any) map[string]any {
 	d := diff(a, b)
 	if d == nil {
 		return map[string]any{}
@@ -217,9 +217,9 @@ func allChecked(checked, deleted map[string]any) map[string]any {
 	return result
 }
 
-// PatchRoot applies a jsondiffpatch-style diff to the provided object and returns the patched object.
+// Patch applies a jsondiffpatch-style diff to the provided object and returns the patched object.
 // Both inputs must be JSON objects (map[string]any).
-func PatchRoot(obj map[string]any, diff map[string]any) map[string]any {
+func Patch(obj map[string]any, diff map[string]any) map[string]any {
 	return doPatch(obj, diff)
 }
 

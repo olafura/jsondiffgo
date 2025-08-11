@@ -68,7 +68,7 @@ func TestCompareWithJsondiffpatch(t *testing.T) {
 		if err := json.Unmarshal([]byte(tc.b), &j2); err != nil {
 			t.Fatal(err)
 		}
-		got := DiffRoot(j1, j2)
+		got := Diff(j1, j2)
 
 		// Normalize: jsondiffpatch returns null for no diff
 		var want any
@@ -105,7 +105,7 @@ func TestProperty_CompareWithJsondiffpatch_Quick(t *testing.T) {
 		if err := json.Unmarshal(b2, &j2); err != nil {
 			t.Fatal(err)
 		}
-		got := DiffRoot(j1, j2)
+		got := Diff(j1, j2)
 
 		var want any
 		if jsd == nil {

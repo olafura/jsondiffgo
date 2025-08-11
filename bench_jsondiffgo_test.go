@@ -38,7 +38,7 @@ func BenchmarkDiff_Big(b *testing.B) {
 
 	var res map[string]any
 	for i := 0; i < b.N; i++ {
-		res = DiffRoot(j1, j2)
+		res = Diff(j1, j2)
 	}
 	benchSink = res
 }
@@ -54,7 +54,7 @@ func BenchmarkDiff_Medium(b *testing.B) {
 
 	var res map[string]any
 	for i := 0; i < b.N; i++ {
-		res = DiffRoot(j1, j2)
+		res = Diff(j1, j2)
 	}
 	benchSink = res
 }
