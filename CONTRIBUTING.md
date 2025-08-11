@@ -8,14 +8,7 @@ Run tests
 - go test ./...
 
 Benchmarks
-- Files expected in profile-data/ matching the Scala profiles.
 - Run: go test -run '^$' -bench . -benchmem
-
-Profiling CLI
-- Build: go build ./cmd/jsondiffgo-profile
-- Big: ./jsondiffgo-profile -mode=big -file1=profile-data/ModernAtomic.json -file2=profile-data/LegacyAtomic.json
-- Medium: ./jsondiffgo-profile -mode=medium -file1=profile-data/cdc.json -file2=profile-data/edg.json -iters=50
-- Profiles: add -cpuprofile=cpu.out -memprofile=mem.out
 
 Fuzzing (Go 1.18+)
 - go test -run '^$' -fuzz=Fuzz -fuzztime=10s

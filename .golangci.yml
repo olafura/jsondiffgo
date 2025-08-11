@@ -12,6 +12,7 @@ linters:
     - unused
     - errcheck
     - revive
+    - gosec
   disable:
     - depguard
 
@@ -23,3 +24,18 @@ issues:
 output:
   sort-results: true
 
+linters-settings:
+  gosec:
+    severity: medium
+    confidence: medium
+
+issues:
+  exclude-rules:
+    - linters:
+        - gosec
+      path: js_compare_test.go
+      text: G204
+    - linters:
+        - gosec
+      path: property_jsondiffgo_test.go
+      text: G404
