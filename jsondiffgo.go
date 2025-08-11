@@ -3,6 +3,7 @@ package jsondiffgo
 import (
 	"encoding/json"
 	"reflect"
+	"sort"
 	"strconv"
 )
 
@@ -354,13 +355,7 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 		}
 	}
 	// sort by idx
-	for i := 0; i < len(ops)-1; i++ {
-		for j := i + 1; j < len(ops); j++ {
-			if ops[j].idx < ops[i].idx {
-				ops[i], ops[j] = ops[j], ops[i]
-			}
-		}
-	}
+	sort.Slice(ops, func(i, j int) bool { return ops[i].idx < ops[j].idx })
 
 	res := make([]any, len(filtered))
 	copy(res, filtered)

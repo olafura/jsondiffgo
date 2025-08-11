@@ -1,6 +1,7 @@
 package jsondiffgo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 	"testing/quick"
+	"time"
 )
 
 // jsDiff invokes Node + jsondiffpatch via js/test_helper.js.
@@ -22,7 +24,9 @@ func jsDiff(s1, s2 string) (any, bool, error) {
 	if _, err := os.Stat(helper); err != nil {
 		return nil, false, fmt.Errorf("No js helper: %w", err)
 	}
-	cmd := exec.Command("node", helper, s1, s2)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "node", helper, s1, s2)
 	out, err := cmd.Output()
 	if err != nil {
 		// Likely missing module; skip
