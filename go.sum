@@ -1,0 +1,10 @@
+github.com/antgroup/hugescm v0.18.3 h1:PbEzayJbpeTjPY9tJiWimC+wqDeNqXBoDXU1dn2KKMA=
+github.com/antgroup/hugescm v0.18.3/go.mod h1:qa+F+CyD7pT+WqRJJ630TzjMJdjH7OokublWd5+OmyQ=
+github.com/klauspost/compress v1.18.0 h1:c/Cqfb0r+Yi+JtIEq73FWXVkRonBlf0CRNYc8Zttxdo=
+github.com/klauspost/compress v1.18.0/go.mod h1:2Pp+KzxcywXVXMr50+X0Q/Lsb43OQHYWRCY2AiWywWQ=
+github.com/kranfix/go_matchable v0.0.0-20220728221618-f31df6986fbd h1:MwATDMl2+MM8UZ0sG5n7KP8oZRrrJyLZWz2SKVLl+jw=
+github.com/kranfix/go_matchable v0.0.0-20220728221618-f31df6986fbd/go.mod h1:tSVJLO7d6yavzSkeSaVDv2/KCCHZp3UjiXF8S3cH26M=
+github.com/valyala/fastjson v1.6.4 h1:uAUNq9Z6ymTgGhcm0UynUAB6tlbakBrz6CQFax3BXVQ=
+github.com/valyala/fastjson v1.6.4/go.mod h1:CLCAqky6SMuOcxStkYQvblddUtoRxhYMGLrsQns1aXY=
+golang.org/x/text v0.27.0 h1:4fGWRpyh641NLlecmyl4LOe6yDdfaYNrGb2zdfo4JV4=
+golang.org/x/text v0.27.0/go.mod h1:1D28KMCvyooCX9hBiosv5Tz/+YLxj0j7XhWjpSUF7CU=
