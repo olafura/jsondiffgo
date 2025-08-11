@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: all test bench fuzz lint js-compare profile-big profile-medium build-profile
+.PHONY: all test bench fuzz lint js-compare profile-big profile-medium build-profile bdd
 
 GOCACHE ?= $(PWD)/.gocache
 
@@ -20,3 +20,6 @@ lint:
 
 js-compare:
 	JSONDIFFGO_COMPARE_JS=1 GOCACHE=$(GOCACHE) go test ./...
+
+bdd:
+	GOCACHE=$(GOCACHE) go test ./bdd -run TestBDDFeatures -v

@@ -56,3 +56,12 @@ jobs:
       - name: Short fuzz run
         run: go test -run '^$' -fuzz=Fuzz -fuzztime=10s
 
+  bdd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Run Godog BDD tests
+        run: go test ./bdd -run TestBDDFeatures -v
