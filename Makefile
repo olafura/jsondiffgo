@@ -16,7 +16,7 @@ fuzz:
 	GOCACHE=$(GOCACHE) go test -run '^$$' -fuzz=Fuzz -fuzztime=$${FUZZTIME:-10s}
 
 lint:
-	golangci-lint run --timeout=5m
+	XDG_CACHE_HOME=$(GOCACHE) GOLANGCI_LINT_CACHE=$(GOCACHE)/golangci-lint golangci-lint run --timeout=5m
 
 js-compare:
 	JSONDIFFGO_COMPARE_JS=1 GOCACHE=$(GOCACHE) go test ./...

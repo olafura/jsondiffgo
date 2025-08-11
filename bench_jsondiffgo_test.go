@@ -1,3 +1,4 @@
+// Package jsondiffgo contains benchmarks for the JSON diff/patch implementation.
 package jsondiffgo
 
 import (
@@ -20,6 +21,7 @@ func mustParseForBench(b *testing.B, data []byte) any {
 
 func loadJSONFileOrSkip(b *testing.B, path string) ([]byte, any) {
 	b.Helper()
+	// #nosec G304 -- benchmark helper reads known files under profile-data
 	data, err := os.ReadFile(path)
 	if err != nil {
 		b.Skipf("skipping: cannot read %s: %v", path, err)

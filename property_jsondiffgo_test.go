@@ -134,7 +134,10 @@ func newPseudoCryptoRand() *rand.Rand {
 	var seed int64
 	var b [8]byte
 	if _, err := crand.Read(b[:]); err == nil {
-		seed = int64(binary.LittleEndian.Uint64(b[:]))
+		// Build int64 from two uint32 halves to avoid uint64->int64 cast
+		hi := binary.LittleEndian.Uint32(b[4:])
+		lo := binary.LittleEndian.Uint32(b[:4])
+		seed = (int64(hi) << 32) | int64(lo)
 	} else {
 		seed = time.Now().UnixNano()
 	}

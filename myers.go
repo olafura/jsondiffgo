@@ -8,12 +8,20 @@ import (
 )
 
 type _MyerDiff struct{}
+
+// MyerDiff is the union of edit operations produced by the Myers diff.
 type MyerDiff matchable.Matcher[_MyerDiff]
 
+// Equal represents a contiguous block present in both sequences.
 type Equal matchable.ValuedMatchable[_MyerDiff, []any]
+
+// Insert represents elements inserted in the new sequence.
 type Insert matchable.ValuedMatchable[_MyerDiff, []any]
+
+// Delete represents elements deleted from the old sequence.
 type Delete matchable.ValuedMatchable[_MyerDiff, []any]
 
+// Path carries the current exploration state when constructing the diff.
 type Path struct {
 	Index  int
 	Oldseq []any
@@ -22,12 +30,20 @@ type Path struct {
 }
 
 type _Process struct{}
+
+// Process is the control flow result from diagonal exploration.
 type Process matchable.Matcher[_Process]
 
+// Done indicates construction finished and carries the resulting edits.
 type Done matchable.ValuedMatchable[_Process, []MyerDiff]
+
+// Next carries the next set of paths to explore.
 type Next matchable.ValuedMatchable[_Process, []Path]
+
+// Continue indicates there is more snake to follow for the given path.
 type Continue matchable.ValuedMatchable[_Process, Path]
 
+// Myers computes a compact diff between two sequences using the Myers algorithm.
 func Myers(oldseq, newseq []any) []MyerDiff {
 	var edits []MyerDiff
 	path := Path{Index: 0, Oldseq: oldseq, Newseq: newseq, Edits: edits}
@@ -36,14 +52,14 @@ func Myers(oldseq, newseq []any) []MyerDiff {
 
 // find explores diagonals to compute a compact diff path.
 
-func find(envelope, max int, paths []Path) []MyerDiff {
+func find(envelope, bound int, paths []Path) []MyerDiff {
 	// avoid unused parameter warning while keeping signature aligned
-	_ = max
+	_ = bound
 	switch diag := eachDiagonal(-envelope, envelope, paths, []Path{}); v := diag.(type) {
 	case Done:
 		return compactReverse(v.Val, []MyerDiff{})
 	case Next:
-		return find(envelope+1, max, v.Val)
+		return find(envelope+1, bound, v.Val)
 	}
 	return []MyerDiff{}
 }
