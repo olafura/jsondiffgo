@@ -23,14 +23,14 @@ func (jsonObject) Generate(r *rand.Rand, size int) reflect.Value {
 	if size <= 0 {
 		size = 1
 	}
-	m := genMap(r, 0, 3+size%3) // depth 0, max depth small
+	m := genMap(r, 0, 5+size%5) // depth 0, max depth up to 10
 	return reflect.ValueOf(jsonObject{M: m})
 }
 
 func genMap(r *rand.Rand, depth, maxDepth int) map[string]any {
-	n := r.Intn(4) // up to 3 keys
+	n := r.Intn(10) // up to 9 keys
 	if depth >= maxDepth {
-		n = r.Intn(2) // keep shallow at max depth
+		n = r.Intn(3) // keep shallow at max depth
 	}
 	m := make(map[string]any, n)
 	for i := 0; i < n; i++ {
@@ -41,9 +41,9 @@ func genMap(r *rand.Rand, depth, maxDepth int) map[string]any {
 }
 
 func genArray(r *rand.Rand, depth, maxDepth int) []any {
-	n := r.Intn(4)
+	n := r.Intn(10)
 	if depth >= maxDepth {
-		n = r.Intn(2)
+		n = r.Intn(3)
 	}
 	a := make([]any, n)
 	for i := 0; i < n; i++ {
@@ -55,18 +55,20 @@ func genArray(r *rand.Rand, depth, maxDepth int) []any {
 func genValue(r *rand.Rand, depth, maxDepth int) any {
 	if depth > maxDepth {
 		// primitives only
-		switch r.Intn(4) {
+		switch r.Intn(5) {
 		case 0:
 			return r.Intn(1000)
 		case 1:
 			return r.Float64()
 		case 2:
 			return r.Intn(2) == 0
+		case 3:
+			return nil
 		default:
 			return randString(r)
 		}
 	}
-	switch r.Intn(6) {
+	switch r.Intn(7) {
 	case 0:
 		return genMap(r, depth, maxDepth)
 	case 1:
@@ -78,10 +80,9 @@ func genValue(r *rand.Rand, depth, maxDepth int) any {
 		return float64(r.Int63n(1_000_000)) / 10.0
 	case 4:
 		return r.Intn(2) == 0
+	case 5:
+		return nil
 	default:
-		if r.Intn(10) == 0 {
-			return nil
-		}
 		return randString(r)
 	}
 }
@@ -159,12 +160,17 @@ func FuzzRoundTripJSON(f *testing.F) {
 		`{"1":[1,2,3]}`,
 		`{"1":{"a":1,"b":2}}`,
 		`{"a":[{"x":1}]}`,
+		`{"a":[]}`,
+		`{"a":{}}`,
+		`{"a":nil}`,
 	}
 	for _, s := range seeds {
 		f.Add(s, s)
 	}
 	f.Add(`{"1":1}`, `{"1":2}`)
 	f.Add(`{"1":[1,2,3]}`, `{"1":[1,2,4]}`)
+	f.Add(`{"a":[]}`, `{"a":[1]}`)
+	f.Add(`{"a":{}}`, `{"a":{"b":1}}`)
 
 	f.Fuzz(func(t *testing.T, s1 string, s2 string) {
 		// Limit overly large inputs
@@ -199,5 +205,74 @@ func FuzzRoundTripJSON(f *testing.F) {
 			// Not expected to fail; crash to file interesting cases
 			t.Fatalf("round-trip mismatch\ns1=%s\ns2=%s\ndiff=%v\npatched=%v", s1, s2, d, p)
 		}
+		})
+}
+
+func FuzzDiff(f *testing.F) {
+	seeds := []string{
+		`{"1":1}`,
+		`{"1":[1,2,3]}`,
+		`{"1":{"a":1,"b":2}}`,
+		`{"a":[{"x":1}]}`,
+	}
+	for _, s := range seeds {
+		f.Add(s, s)
+	}
+	f.Add(`{"1":1}`, `{"1":2}`)
+	f.Add(`{"1":[1,2,3]}`, `{"1":[1,2,4]}`)
+
+	f.Fuzz(func(t *testing.T, s1 string, s2 string) {
+		// Limit overly large inputs
+		if len(s1)+len(s2) > 1<<20 { // ~1MB
+			t.Skip()
+		}
+
+		var v1, v2 any
+		if err := json.Unmarshal([]byte(s1), &v1); err != nil {
+			t.Skip()
+		}
+		if err := json.Unmarshal([]byte(s2), &v2); err != nil {
+			t.Skip()
+		}
+
+		_ = Diff(v1, v2)
+	})
+}
+
+func FuzzPatch(f *testing.F) {
+	seeds := []string{
+		`{"1":1}`,
+		`{"1":[1,2,3]}`,
+	}
+	for _, s := range seeds {
+		f.Add(s, "{}")
+	}
+	f.Add(`{"1":1}`, `{"1":[1,2]}`)
+
+	f.Fuzz(func(t *testing.T, s1 string, s2 string) {
+		// Limit overly large inputs
+		if len(s1)+len(s2) > 1<<20 { // ~1MB
+			t.Skip()
+		}
+
+		var v1, v2 any
+		if err := json.Unmarshal([]byte(s1), &v1); err != nil {
+			t.Skip()
+		}
+		if err := json.Unmarshal([]byte(s2), &v2); err != nil {
+			t.Skip()
+		}
+
+		m1, ok1 := v1.(map[string]any)
+		if !ok1 {
+			m1 = map[string]any{"_": v1}
+		}
+		m2, ok2 := v2.(map[string]any)
+		if !ok2 {
+			// diff must be an object
+			t.Skip()
+		}
+
+		_, _ = Patch(m1, m2)
 	})
 }
