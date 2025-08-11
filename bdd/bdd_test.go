@@ -169,7 +169,11 @@ func (s *suite) givenDiff(doc *godog.DocString) error {
 }
 
 func (s *suite) whenIApplyThePatch() error {
-    s.result = jsondiffgo.Patch(s.orig, s.patch)
+    	result, err := jsondiffgo.Patch(s.orig, s.patch)
+	if err != nil {
+		return err
+	}
+	s.result = result
     return nil
 }
 

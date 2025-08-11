@@ -63,7 +63,10 @@ func TestBigPatch_RoundTrip(t *testing.T) {
 	a := mustReadJSON(t, "testdata/big_json1.json").(map[string]any)
 	b := mustReadJSON(t, "testdata/big_json2.json").(map[string]any)
 	d := Diff(a, b)
-	p := Patch(a, d)
+	p, err := Patch(a, d)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(p, b) {
 		t.Fatalf("big patch mismatch")
 	}
@@ -74,7 +77,10 @@ func TestArrayPatch_ShiftInside(t *testing.T) {
 	want := map[string]any{"1": []any{float64(1), float64(2), float64(0), float64(3)}}
 	// Insertion before the last element
 	diff := map[string]any{"1": map[string]any{"2": []any{float64(0)}, "_t": "a"}}
-	got := Patch(a, diff)
+	got, err := Patch(a, diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("patch shift inside mismatch: got=%v want=%v", got, want)
 	}
@@ -84,7 +90,10 @@ func TestArrayPatch_Reorder(t *testing.T) {
 	a := map[string]any{"1": []any{float64(1), float64(2), float64(3)}}
 	want := map[string]any{"1": []any{float64(3), float64(2), float64(1)}}
 	diff := map[string]any{"1": map[string]any{"_0": []any{"", float64(2), float64(3)}, "_2": []any{"", float64(0), float64(3)}, "_t": "a"}}
-	got := Patch(a, diff)
+	got, err := Patch(a, diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("patch reorder mismatch: got=%v want=%v", got, want)
 	}
@@ -101,7 +110,10 @@ func TestIndexWithTwoDigits_NoChange(t *testing.T) {
 	b := map[string]any{"cards": cards}
 	// Diff that refers to index 12; should be ignored (out of range)
 	diff := map[string]any{"cards": map[string]any{"12": map[string]any{"foo11": []any{true, false}}, "_t": "a"}}
-	got := Patch(a, diff)
+	got, err := Patch(a, diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(got, b) {
 		t.Fatalf("two-digit index patch changed value: got=%v want=%v", got, b)
 	}
@@ -119,7 +131,10 @@ func TestChangeEleventhItemInList(t *testing.T) {
 	list2[10] = -(list2[10].(int) + 0) // change 11th item
 	b := map[string]any{"primitives": list2}
 	d := Diff(a, b)
-	p := Patch(a, d)
+	p, err := Patch(a, d)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(p, b) {
 		t.Fatalf("eleventh item patch mismatch")
 	}
@@ -141,7 +156,10 @@ func TestChangeEleventhItemInListOfMaps(t *testing.T) {
 	list2[10] = changed
 	b := map[string]any{"maps": list2}
 	d := Diff(a, b)
-	p := Patch(a, d)
+	p, err := Patch(a, d)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(p, b) {
 		t.Fatalf("eleventh map patch mismatch")
 	}
@@ -151,7 +169,10 @@ func TestNullFieldsPreservedAfterPatch(t *testing.T) {
 	a := map[string]any{"name": "original", "should_be_nil": nil}
 	b := map[string]any{"name": "changed", "should_be_nil": nil}
 	d := Diff(a, b)
-	p := Patch(a, d)
+	p, err := Patch(a, d)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(p, b) {
 		t.Fatalf("nil preservation mismatch: got=%v want=%v", p, b)
 	}
@@ -191,7 +212,10 @@ func TestChangeAndAddItemsInLargeList(t *testing.T) {
 	a := map[string]any{"maps": list}
 	b := map[string]any{"maps": newList}
 	d := Diff(a, b)
-	p := Patch(a, d)
+	p, err := Patch(a, d)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(p, b) {
 		t.Fatalf("large list patch mismatch")
 	}

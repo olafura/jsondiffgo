@@ -230,7 +230,9 @@ func toNumber(v any) (float64, bool) {
 }
 
 // allChecked transforms insertions of objects combined with corresponding deletions
-// into nested diffs, mirroring the Scala logic.
+// into nested diffs, mirroring the Scala logic. This is a key part of the
+// jsondiffpatch algorithm, which aims to produce more semantic diffs for
+// arrays of objects.
 func allChecked(checked, deleted map[string]any) map[string]any {
 	result := map[string]any{}
 
@@ -272,11 +274,11 @@ func allChecked(checked, deleted map[string]any) map[string]any {
 
 // Patch applies a jsondiffpatch-style diff to the provided object and returns the patched object.
 // Both inputs must be JSON objects (map[string]any).
-func Patch(obj map[string]any, diff map[string]any) map[string]any {
+func Patch(obj map[string]any, diff map[string]any) (map[string]any, error) {
 	return doPatch(obj, diff)
 }
 
-func doPatch(m1 map[string]any, d1 map[string]any) map[string]any {
+func doPatch(m1 map[string]any, d1 map[string]any) (map[string]any, error) {
 	// Preprocess: turn [new_value] entries into new_value directly
 	pre := map[string]any{}
 	for k, v := range d1 {
@@ -296,7 +298,10 @@ func doPatch(m1 map[string]any, d1 map[string]any) map[string]any {
 	for k, v := range pre {
 		existing, has := out[k]
 		if has {
-			merged, ok, remove := doPatchMerge(existing, v)
+			merged, ok, remove, err := doPatchMerge(existing, v)
+			if err != nil {
+				return nil, err
+			}
 			if remove {
 				delete(out, k)
 				continue
@@ -312,27 +317,27 @@ func doPatch(m1 map[string]any, d1 map[string]any) map[string]any {
 			out[k] = v
 		}
 	}
-	return out
+	return out, nil
 }
 
 // doPatchMerge applies one diff value vDiff to an existing value vMap.
-// Returns (newValue, replaced?, removeKey?)
-func doPatchMerge(vMap, vDiff any) (any, bool, bool) {
+// Returns (newValue, replaced?, removeKey?, error?)
+func doPatchMerge(vMap, vDiff any) (any, bool, bool, error) {
 	// Case: [old, new]
 	if arr, ok := vDiff.([]any); ok {
 		if len(arr) == 2 {
 			if fastEqual(arr[0], vMap) {
-				return arr[1], true, false
+				return arr[1], true, false, nil
 			}
 			// if old doesn't match, still replace with new
-			return arr[1], true, false
+			return arr[1], true, false, nil
 		}
 		if len(arr) == 3 && isZero(arr[1]) && isZero(arr[2]) {
 			// deletion marker for object key
-			return nil, false, true
+			return nil, false, true, nil
 		}
 		// otherwise treat as replacement value
-		return vDiff, true, false
+		return vDiff, true, false, nil
 	}
 
 	// Case: object
@@ -340,14 +345,22 @@ func doPatchMerge(vMap, vDiff any) (any, bool, bool) {
 		if t, hasT := m["_t"]; hasT && t == "a" {
 			// array diff
 			// remove marker before applying
-			return applyArrayPatch(asArray(vMap), m), true, false
+			patched, err := applyArrayPatch(asArray(vMap), m)
+			if err != nil {
+				return nil, false, false, err
+			}
+			return patched, true, false, nil
 		}
 		// nested object diff
-		return doPatch(asMap(vMap), m), true, false
+		patched, err := doPatch(asMap(vMap), m)
+		if err != nil {
+			return nil, false, false, err
+		}
+		return patched, true, false, nil
 	}
 
 	// Default: replace
-	return vDiff, true, false
+	return vDiff, true, false, nil
 }
 
 func asArray(v any) []any {
@@ -367,7 +380,7 @@ func asMap(v any) map[string]any {
 }
 
 // applyArrayPatch implements the array patching logic for jsondiffpatch-style diffs.
-func applyArrayPatch(list []any, diff map[string]any) []any {
+func applyArrayPatch(list []any, diff map[string]any) ([]any, error) {
 	// Make a shallow copy of diff and remove _t
 	d2 := map[string]any{}
 	for k, v := range diff {
@@ -377,15 +390,41 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 		d2[k] = v
 	}
 
-	// Split deleted, moves and rest
+	deletedIdx, moves, remaining, err := parseArrayDiff(d2)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove deleted indices
+	filtered := applyArrayDeletions(list, deletedIdx)
+
+	// Apply moves
+	res, err := applyArrayMoves(filtered, list, moves)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply remaining operations
+	res, err = applyArrayRemaining(res, remaining)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+type moveOp struct{ src, dest int }
+
+func parseArrayDiff(diff map[string]any) (map[int]struct{}, []moveOp, map[string]any, error) {
 	deletedIdx := map[int]struct{}{}
-	type moveOp struct{ src, dest int }
 	moves := make([]moveOp, 0)
 	remaining := map[string]any{}
-	for k, v := range d2 {
+	for k, v := range diff {
 		if splitUnderscore(k, v) {
 			if idx, err := strconv.Atoi(k[1:]); err == nil {
 				deletedIdx[idx] = struct{}{}
+			} else {
+				return nil, nil, nil, err
 			}
 		} else if len(k) > 0 && k[0] == '_' {
 			if arr, ok := v.([]any); ok && len(arr) == 3 {
@@ -395,6 +434,8 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 					if src, err := strconv.Atoi(k[1:]); err == nil {
 						moves = append(moves, moveOp{src: src, dest: dest})
 						continue
+					} else {
+						return nil, nil, nil, err
 					}
 				}
 			}
@@ -404,37 +445,22 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 			remaining[k] = v
 		}
 	}
+	return deletedIdx, moves, remaining, nil
+}
 
-	// Remove deleted indices
+func applyArrayDeletions(list []any, deletedIdx map[int]struct{}) []any {
 	filtered := make([]any, 0, len(list))
 	for i, val := range list {
 		if _, isDel := deletedIdx[i]; !isDel {
 			filtered = append(filtered, val)
 		}
 	}
+	return filtered
+}
 
-	// Apply remaining operations in index order
-	type kv struct {
-		idx int
-		val any
-	}
-	ops := make([]kv, 0, len(remaining))
-	for k, v := range remaining {
-		if idx, err := strconv.Atoi(k); err == nil {
-			ops = append(ops, kv{idx: idx, val: v})
-		}
-	}
-	// sort by idx
-	sort.Slice(ops, func(i, j int) bool { return ops[i].idx < ops[j].idx })
-
-	res := make([]any, len(filtered))
-	copy(res, filtered)
-
-	// Apply moves: use original values to locate current positions
+func applyArrayMoves(res, orig []any, moves []moveOp) ([]any, error) {
 	if len(moves) > 0 {
 		// capture original list for identity
-		orig := make([]any, len(list))
-		copy(orig, list)
 		sort.Slice(moves, func(i, j int) bool { return moves[i].dest < moves[j].dest })
 		for _, m := range moves {
 			if m.src < 0 || m.src >= len(orig) {
@@ -466,13 +492,35 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 			}
 		}
 	}
+	return res, nil
+}
+
+func applyArrayRemaining(res []any, remaining map[string]any) ([]any, error) {
+	type kv struct {
+		idx int
+		val any
+	}
+	ops := make([]kv, 0, len(remaining))
+	for k, v := range remaining {
+		if idx, err := strconv.Atoi(k); err == nil {
+			ops = append(ops, kv{idx: idx, val: v})
+		} else {
+			// this is not a valid operation, but we will ignore it to maintain compatibility
+		}
+	}
+	// sort by idx
+	sort.Slice(ops, func(i, j int) bool { return ops[i].idx < ops[j].idx })
 
 	for _, op := range ops {
 		switch v := op.val.(type) {
 		case map[string]any:
 			// nested diff at index
 			if op.idx >= 0 && op.idx < len(res) {
-				res[op.idx] = doPatch(asMap(res[op.idx]), v)
+				patched, err := doPatch(asMap(res[op.idx]), v)
+				if err != nil {
+					return nil, err
+				}
+				res[op.idx] = patched
 			}
 		case []any:
 			if len(v) == 1 {
@@ -495,7 +543,7 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 			}
 		}
 	}
-	return res
+	return res, nil
 }
 
 // splitUnderscore identifies deletion markers like _i: [x,0,0]

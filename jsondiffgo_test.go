@@ -168,7 +168,10 @@ func TestJsonPatch_Basic(t *testing.T) {
 	s1 := "{\"1\": 1}"
 	s2 := "{\"1\": 2}"
 	diff := parseJSON(t, "{\"1\": [1,2]}").(map[string]any)
-	patched := Patch(parseJSON(t, s1).(map[string]any), diff)
+	patched, err := Patch(parseJSON(t, s1).(map[string]any), diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(patched, parseJSON(t, s2)) {
 		t.Fatalf("patch mismatch: got=%v want=%v", patched, s2)
 	}
@@ -178,7 +181,10 @@ func TestJsonPatch_Array(t *testing.T) {
 	s1 := "{\"1\": [1,2,3]}"
 	s2 := "{\"1\": [1,2,4]}"
 	diff := parseJSON(t, "{\"1\": {\"2\": [4], \"_2\": [3,0,0], \"_t\": \"a\"}} ").(map[string]any)
-	patched := Patch(parseJSON(t, s1).(map[string]any), diff)
+	patched, err := Patch(parseJSON(t, s1).(map[string]any), diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(patched, parseJSON(t, s2)) {
 		t.Fatalf("patch mismatch: got=%v want=%v", patched, s2)
 	}
@@ -188,7 +194,10 @@ func TestJsonPatch_ObjectInArray(t *testing.T) {
 	s1 := "{\"1\": [{\"1\":1}]}"
 	s2 := "{\"1\": [{\"1\":2}]}"
 	diff := parseJSON(t, "{\"1\": {\"0\": {\"1\": [1,2]}, \"_t\": \"a\"}} ").(map[string]any)
-	patched := Patch(parseJSON(t, s1).(map[string]any), diff)
+	patched, err := Patch(parseJSON(t, s1).(map[string]any), diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(patched, parseJSON(t, s2)) {
 		t.Fatalf("patch mismatch: got=%v want=%v", patched, s2)
 	}
@@ -198,7 +207,10 @@ func TestJsonPatch_OneObjectInArray(t *testing.T) {
 	s1 := "{\"1\": [1]}"
 	s2 := "{\"1\": [{\"1\":2}]}"
 	diff := parseJSON(t, "{\"1\": {\"0\": [{\"1\":2}], \"_0\": [1,0,0], \"_t\": \"a\"}} ").(map[string]any)
-	patched := Patch(parseJSON(t, s1).(map[string]any), diff)
+	patched, err := Patch(parseJSON(t, s1).(map[string]any), diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(patched, parseJSON(t, s2)) {
 		t.Fatalf("patch mismatch: got=%v want=%v", patched, s2)
 	}
@@ -208,7 +220,10 @@ func TestJsonPatch_DeletedValueWithObjectChangeInArray(t *testing.T) {
 	s1 := "{\"1\": [1,{\"1\":1}]}"
 	s2 := "{\"1\": [{\"1\":2}]}"
 	diff := parseJSON(t, "{\"1\": {\"0\": [{\"1\":2}], \"_0\": [1,0,0], \"_1\": [{\"1\":1},0,0], \"_t\": \"a\"}} ").(map[string]any)
-	patched := Patch(parseJSON(t, s1).(map[string]any), diff)
+	patched, err := Patch(parseJSON(t, s1).(map[string]any), diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(patched, parseJSON(t, s2)) {
 		t.Fatalf("patch mismatch: got=%v want=%v", patched, s2)
 	}
@@ -218,7 +233,10 @@ func TestJsonPatch_DeletedKeyWorks(t *testing.T) {
 	s1 := "{\"foo\": 1}"
 	s2 := "{\"bar\": 3}"
 	diff := parseJSON(t, "{\"bar\": [3], \"foo\": [1,0,0]} ").(map[string]any)
-	patched := Patch(parseJSON(t, s1).(map[string]any), diff)
+	patched, err := Patch(parseJSON(t, s1).(map[string]any), diff)
+	if err != nil {
+		t.Fatalf("Patch failed: %v", err)
+	}
 	if !reflect.DeepEqual(patched, parseJSON(t, s2)) {
 		t.Fatalf("patch mismatch: got=%v want=%v", patched, s2)
 	}

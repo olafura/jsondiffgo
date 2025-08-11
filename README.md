@@ -60,7 +60,10 @@ Apply a jsondiffpatch-style diff back to an object root:
 ```go
 obj := map[string]any{"test": 1}
 diff := map[string]any{"test": []any{1, 2}}
-patched := jsondiffgo.Patch(obj, diff)
+patched, err := jsondiffgo.Patch(obj, diff)
+if err != nil {
+    // handle error
+}
 // patched => map[string]any{"test": 2}
 ```
 
@@ -69,16 +72,24 @@ Array edits and nested object patches are supported:
 ```go
 obj := map[string]any{"test": []any{1, 2, 3}}
 diff := map[string]any{"test": map[string]any{"2": []any{4}, "_2": []any{3, 0, 0}, "_t": "a"}}
-patched := jsondiffgo.Patch(obj, diff)
+patched, err := jsondiffgo.Patch(obj, diff)
+if err != nil {
+    // handle error
+}
 // patched => map[string]any{"test": []any{1, 2, 4}}
 ```
+
+## Recent Improvements
+
+- **Error Handling:** The `Patch` function now returns an error, making the library more robust against invalid patches.
+- **Refactoring:** The complex `applyArrayPatch` function has been refactored into smaller, more manageable functions, improving readability and maintainability.
 
 ## API
 
 - `func Diff(a, b any) map[string]any`
   - Compute a jsondiffpatch-style diff between two parsed JSON values. Returns an object at the root (empty when values are equal).
-- `func Patch(obj map[string]any, diff map[string]any) map[string]any`
-  - Apply a jsondiffpatch-style diff to an object and return the patched object.
+- `func Patch(obj map[string]any, diff map[string]any) (map[string]any, error)`
+  - Apply a jsondiffpatch-style diff to an object and return the patched object. Returns an error if the patch is invalid.
 
 Note: The intended usage is with JSON object roots. Non-object roots are handled, but object roots match jsondiffpatch behavior and the included tests.
 
@@ -110,4 +121,3 @@ Benchmarks expect JSON files under `profile-data/` (already included in this rep
 ## License
 
 See `LICENSE.md`.
-

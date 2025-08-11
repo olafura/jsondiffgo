@@ -22,6 +22,7 @@ type Insert matchable.ValuedMatchable[_MyerDiff, []any]
 type Delete matchable.ValuedMatchable[_MyerDiff, []any]
 
 // Path carries the current exploration state when constructing the diff.
+// It represents a path in the edit graph.
 type Path struct {
 	Index  int
 	Oldseq []any
@@ -44,6 +45,8 @@ type Next matchable.ValuedMatchable[_Process, []Path]
 type Continue matchable.ValuedMatchable[_Process, Path]
 
 // Myers computes a compact diff between two sequences using the Myers algorithm.
+// It is a port of the Scala implementation from jsondiffpatch.
+// The algorithm finds the shortest edit script (SES) between two sequences.
 func Myers(oldseq, newseq []any) []MyerDiff {
 	var edits []MyerDiff
 	path := Path{Index: 0, Oldseq: oldseq, Newseq: newseq, Edits: edits}
@@ -51,7 +54,7 @@ func Myers(oldseq, newseq []any) []MyerDiff {
 }
 
 // find explores diagonals to compute a compact diff path.
-
+// It is a recursive function that explores the edit graph.
 func find(envelope, bound int, paths []Path) []MyerDiff {
 	// avoid unused parameter warning while keeping signature aligned
 	_ = bound
@@ -64,6 +67,8 @@ func find(envelope, bound int, paths []Path) []MyerDiff {
 	return []MyerDiff{}
 }
 
+// compactReverse compacts the edit script by merging adjacent edits of the same type.
+// It also includes some special cases to produce smaller diffs.
 func compactReverse(edits []MyerDiff, acc []MyerDiff) []MyerDiff {
 	// Special-case: rearrange Equals, Insert, Equals for smaller diffs
 	if len(acc) >= 3 {
@@ -241,6 +246,8 @@ func moveDown(path Path) Path {
 	return Path{Index: path.Index + 1, Oldseq: []any{}, Newseq: path.Newseq, Edits: path.Edits}
 }
 
+// followSnake follows a "snake" in the edit graph, which is a sequence of
+// diagonal moves representing common elements between the two sequences.
 func followSnake(path Path) Process {
 	p := path
 	for len(p.Oldseq) > 0 && len(p.Newseq) > 0 && reflect.DeepEqual(p.Oldseq[0], p.Newseq[0]) {
