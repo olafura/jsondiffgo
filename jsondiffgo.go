@@ -176,6 +176,27 @@ func isZero(v any) bool {
 	}
 }
 
+func toNumber(v any) (float64, bool) {
+	switch t := v.(type) {
+	case float64:
+		return t, true
+	case float32:
+		return float64(t), true
+	case int:
+		return float64(t), true
+	case int64:
+		return float64(t), true
+	case json.Number:
+		f, err := t.Float64()
+		if err == nil {
+			return f, true
+		}
+		return 0, false
+	default:
+		return 0, false
+	}
+}
+
 // allChecked transforms insertions of objects combined with corresponding deletions
 // into nested diffs, mirroring the Scala logic.
 func allChecked(checked, deleted map[string]any) map[string]any {
@@ -322,14 +343,29 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 		d2[k] = v
 	}
 
-	// Split deleted and rest
+	// Split deleted, moves and rest
 	deletedIdx := map[int]struct{}{}
+	type moveOp struct{ src, dest int }
+	moves := make([]moveOp, 0)
 	remaining := map[string]any{}
 	for k, v := range d2 {
 		if splitUnderscore(k, v) {
 			if idx, err := strconv.Atoi(k[1:]); err == nil {
 				deletedIdx[idx] = struct{}{}
 			}
+		} else if len(k) > 0 && k[0] == '_' {
+			if arr, ok := v.([]any); ok && len(arr) == 3 {
+				// jsondiffpatch move: ["", dest, 3]
+				if num, ok2 := toNumber(arr[1]); ok2 {
+					dest := int(num)
+					if src, err := strconv.Atoi(k[1:]); err == nil {
+						moves = append(moves, moveOp{src: src, dest: dest})
+						continue
+					}
+				}
+			}
+			// Unknown underscore op, keep in remaining
+			remaining[k] = v
 		} else {
 			remaining[k] = v
 		}
@@ -359,6 +395,43 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 
 	res := make([]any, len(filtered))
 	copy(res, filtered)
+
+	// Apply moves: use original values to locate current positions
+	if len(moves) > 0 {
+		// capture original list for identity
+		orig := make([]any, len(list))
+		copy(orig, list)
+		sort.Slice(moves, func(i, j int) bool { return moves[i].dest < moves[j].dest })
+		for _, m := range moves {
+			if m.src < 0 || m.src >= len(orig) {
+				continue
+			}
+			val := orig[m.src]
+			// find current index of val in res
+			cur := -1
+			for i := range res {
+				if reflect.DeepEqual(res[i], val) {
+					cur = i
+					break
+				}
+			}
+			if cur == -1 {
+				continue
+			}
+			// remove at cur
+			res = append(res[:cur], res[cur+1:]...)
+			// insert at dest
+			if m.dest < 0 {
+				m.dest = 0
+			}
+			if m.dest >= len(res) {
+				res = append(res, val)
+			} else {
+				res = append(res[:m.dest+1], res[m.dest:]...)
+				res[m.dest] = val
+			}
+		}
+	}
 
 	for _, op := range ops {
 		switch v := op.val.(type) {
