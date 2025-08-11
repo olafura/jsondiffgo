@@ -1,41 +1,37 @@
+version: "2"
 run:
-  timeout: 5m
   tests: true
-
 linters:
   enable:
-    - govet
-    - staticcheck
-    - gosimple
-    - ineffassign
-    - typecheck
-    - unused
-    - errcheck
-    - revive
     - gosec
+    - revive
   disable:
     - depguard
-
-issues:
-  exclude-use-default: false
-  exclude:
-    - '^G104: ' # gosec not enabled, but leave space if added
-
-output:
-  sort-results: true
-
-linters-settings:
-  gosec:
-    severity: medium
-    confidence: medium
-
-issues:
-  exclude-rules:
-    - linters:
-        - gosec
-      path: js_compare_test.go
-      text: G204
-    - linters:
-        - gosec
-      path: property_jsondiffgo_test.go
-      text: G404
+  settings:
+    gosec:
+      severity: medium
+      confidence: medium
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - gosec
+        path: js_compare_test.go
+        text: G204
+      - linters:
+          - gosec
+        path: property_jsondiffgo_test.go
+        text: G404
+      - path: (.+)\.go$
+        text: '^G104: '
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
