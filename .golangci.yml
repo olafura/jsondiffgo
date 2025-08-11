@@ -1,0 +1,25 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - typecheck
+    - unused
+    - errcheck
+    - revive
+  disable:
+    - depguard
+
+issues:
+  exclude-use-default: false
+  exclude:
+    - '^G104: ' # gosec not enabled, but leave space if added
+
+output:
+  sort-results: true
+
