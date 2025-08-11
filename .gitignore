@@ -30,3 +30,9 @@ go.work.sum
 # Profile data
 
 profile-data/*.json
+
+# npm
+
+node_modules
+yarn.lock
+package-lock.json

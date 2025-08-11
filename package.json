@@ -1,0 +1,6 @@
+{
+  "repository": {},
+  "dependencies": {
+    "jsondiffpatch": "^0.1"
+  }
+}
