@@ -3,6 +3,7 @@ package bdd
 import (
     "encoding/json"
     "fmt"
+    "os"
     "reflect"
     "testing"
 
@@ -17,6 +18,22 @@ type suite struct {
     orig map[string]any
     patch map[string]any
     result map[string]any
+}
+
+func readFileFlexible(path string) ([]byte, error) {
+    // #nosec G304 -- the features control only relative paths inside repo testdata
+    b, err := os.ReadFile(path)
+    if err == nil {
+        return b, nil
+    }
+    // try parent-relative
+    if len(path) > 0 && path[0] != '/' {
+        // #nosec G304 -- see above; only repo-local paths are used
+        if b2, err2 := os.ReadFile("../" + path); err2 == nil {
+            return b2, nil
+        }
+    }
+    return nil, err
 }
 
 func parseJSON[T any](s string) (any, error) {
@@ -39,6 +56,32 @@ func (s *suite) givenJSONA(doc *godog.DocString) error {
 func (s *suite) givenJSONB(doc *godog.DocString) error {
     v, err := parseJSON[any](doc.Content)
     if err != nil {
+        return err
+    }
+    s.b = v
+    return nil
+}
+
+func (s *suite) givenJSONAFromFile(path string) error {
+    b, err := readFileFlexible(path)
+    if err != nil {
+        return err
+    }
+    var v any
+    if err := json.Unmarshal(b, &v); err != nil {
+        return err
+    }
+    s.a = v
+    return nil
+}
+
+func (s *suite) givenJSONBFromFile(path string) error {
+    b, err := readFileFlexible(path)
+    if err != nil {
+        return err
+    }
+    var v any
+    if err := json.Unmarshal(b, &v); err != nil {
         return err
     }
     s.b = v
@@ -68,6 +111,23 @@ func (s *suite) thenTheDiffEquals(doc *godog.DocString) error {
 func (s *suite) givenOriginalJSON(doc *godog.DocString) error {
     v, err := parseJSON[any](doc.Content)
     if err != nil {
+        return err
+    }
+    m, ok := v.(map[string]any)
+    if !ok {
+        m = map[string]any{"_": v}
+    }
+    s.orig = m
+    return nil
+}
+
+func (s *suite) givenOriginalJSONFromFile(path string) error {
+    b, err := readFileFlexible(path)
+    if err != nil {
+        return err
+    }
+    var v any
+    if err := json.Unmarshal(b, &v); err != nil {
         return err
     }
     m, ok := v.(map[string]any)
@@ -117,11 +177,14 @@ func (s *suite) thenTheResultEquals(doc *godog.DocString) error {
 func InitializeScenario(ctx *godog.ScenarioContext) {
     s := &suite{}
     ctx.Step(`^JSON A:$`, s.givenJSONA)
+    ctx.Step(`^JSON A from file "([^"]+)"$`, s.givenJSONAFromFile)
     ctx.Step(`^JSON B:$`, s.givenJSONB)
+    ctx.Step(`^JSON B from file "([^"]+)"$`, s.givenJSONBFromFile)
     ctx.Step(`^I compute the diff$`, s.whenIComputeTheDiff)
     ctx.Step(`^the diff equals:$`, s.thenTheDiffEquals)
 
     ctx.Step(`^Original JSON:$`, s.givenOriginalJSON)
+    ctx.Step(`^Original JSON from file "([^"]+)"$`, s.givenOriginalJSONFromFile)
     ctx.Step(`^Diff:$`, s.givenDiff)
     ctx.Step(`^I apply the patch$`, s.whenIApplyThePatch)
     ctx.Step(`^the result equals:$`, s.thenTheResultEquals)
