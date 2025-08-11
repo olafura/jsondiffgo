@@ -254,19 +254,8 @@ func doPatch(m1 map[string]any, d1 map[string]any) map[string]any {
                 out[k] = v
             }
         } else {
-            // new key
-            if mv, ok := v.(map[string]any); ok {
-                // if it's an object diff, apply recursively when not array marker
-                if t, hasT := mv["_t"]; hasT && t == "a" {
-                    // array creation from empty
-                    out[k] = applyArrayPatch([]any{}, mv)
-                } else {
-                    // add nested object as-is
-                    out[k] = doPatch(map[string]any{}, mv)
-                }
-            } else {
-                out[k] = v
-            }
+            // new key: assign value as-is (it's a concrete value, not a diff)
+            out[k] = v
         }
     }
     return out
