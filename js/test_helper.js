@@ -7,7 +7,11 @@ if (argv.length > 3) {
   const j1 = JSON.parse(argv[2]);
   const j2 = JSON.parse(argv[3]);
   const d = jsondiffpatch.diff(j1, j2);
-  process.stdout.write(JSON.stringify(d));
+  if (d) {
+    process.stdout.write(JSON.stringify(d));
+  } else {
+    process.stdout.write('{}');
+  }
   process.exit(0);
 } else {
   process.stderr.write('usage: node js/test_helper.js <json1> <json2>\n');
