@@ -13,7 +13,7 @@ jobs:
         with:
           go-version: stable
       - name: Run tests
-        run: go test ./...
+        run: make test
 
   lint:
     runs-on: ubuntu-latest
@@ -43,7 +43,7 @@ jobs:
       - name: Run tests with JS comparison
         env:
           JSONDIFFGO_COMPARE_JS: '1'
-        run: go test ./...
+        run: make test
 
   fuzz:
     runs-on: ubuntu-latest
@@ -54,7 +54,7 @@ jobs:
         with:
           go-version: stable
       - name: Short fuzz run
-        run: go test -run '^$' -fuzz=Fuzz -fuzztime=10s
+        run: make fuzz
 
   bdd:
     runs-on: ubuntu-latest
@@ -64,4 +64,4 @@ jobs:
         with:
           go-version: stable
       - name: Run Godog BDD tests
-        run: go test ./bdd -run TestBDDFeatures -v
+        run: make bdd
