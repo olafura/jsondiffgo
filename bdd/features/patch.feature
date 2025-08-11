@@ -56,6 +56,7 @@ Feature: JSON patch
       """
       {"1": {"_0": ["", 2, 3], "_2": ["", 0, 3], "_t": "a"}}
       """
+    And JS compare is skipped
     When I apply the patch
     Then the result equals:
       """
@@ -104,6 +105,7 @@ Feature: JSON patch
       """
       {"cards": {"12": {"foo11": [true, false]}, "_t": "a"}}
       """
+    And JS compare is skipped
     When I apply the patch
     Then the result equals:
       """
@@ -173,4 +175,3 @@ Feature: JSON patch
        "greeting": "Hello, Talley Reyes! You have 2 unread messages.",
        "favoriteFruit": "banana"}
       """
-

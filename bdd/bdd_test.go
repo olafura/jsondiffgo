@@ -1,11 +1,14 @@
 package bdd
 
 import (
+    "context"
     "encoding/json"
     "fmt"
     "os"
+    "os/exec"
     "reflect"
     "testing"
+    "time"
 
     "github.com/cucumber/godog"
     "github.com/jsondiffgo"
@@ -18,6 +21,9 @@ type suite struct {
     orig map[string]any
     patch map[string]any
     result map[string]any
+    jsd   any
+    jsok  bool
+    skipJSCompare bool
 }
 
 func readFileFlexible(path string) ([]byte, error) {
@@ -91,6 +97,10 @@ func (s *suite) givenJSONBFromFile(path string) error {
 func (s *suite) whenIComputeTheDiff() error {
     sdiff := jsondiffgo.Diff(s.a, s.b)
     s.diff = sdiff
+    // Optionally compare with jsondiffpatch via JS helper
+    if d, ok, err := runJSDiff(s.a, s.b); err == nil && ok {
+        s.jsd, s.jsok = d, true
+    }
     return nil
 }
 
@@ -104,6 +114,13 @@ func (s *suite) thenTheDiffEquals(doc *godog.DocString) error {
         bw, _ := json.Marshal(wantAny)
         bg, _ := json.Marshal(s.diff)
         return fmt.Errorf("diff mismatch\nwant=%s\ngot =%s", string(bw), string(bg))
+    }
+    if s.jsok && !s.skipJSCompare {
+        if !reflect.DeepEqual(s.diff, s.jsd) {
+            bj, _ := json.Marshal(s.jsd)
+            bg, _ := json.Marshal(s.diff)
+            return fmt.Errorf("diff mismatch vs js helper\njs =%s\ngot=%s", string(bj), string(bg))
+        }
     }
     return nil
 }
@@ -170,7 +187,54 @@ func (s *suite) thenTheResultEquals(doc *godog.DocString) error {
         bg, _ := json.Marshal(s.result)
         return fmt.Errorf("patch mismatch\nwant=%s\ngot =%s", string(bw), string(bg))
     }
+    // If JS helper is available and we have a given diff, verify it matches js diff
+    if s.patch != nil && !s.skipJSCompare {
+        if d, ok, err := runJSDiff(s.orig, m); err == nil && ok {
+            if !reflect.DeepEqual(s.patch, d) {
+                bj, _ := json.Marshal(d)
+                bp, _ := json.Marshal(s.patch)
+                return fmt.Errorf("given diff mismatch vs js helper\njs =%s\ngiven=%s", string(bj), string(bp))
+            }
+        }
+    }
     return nil
+}
+
+func (s *suite) skipJS() error {
+    s.skipJSCompare = true
+    return nil
+}
+
+// runJSDiff executes the Node helper if JSONDIFFGO_COMPARE_JS is set and helper exists.
+func runJSDiff(a, b any) (any, bool, error) {
+    if os.Getenv("JSONDIFFGO_COMPARE_JS") == "" {
+        return nil, false, nil
+    }
+    helper := "js/test_helper.js"
+    if _, err := os.Stat(helper); err != nil {
+        // try from parent
+        helper = "../js/test_helper.js"
+        if _, err2 := os.Stat(helper); err2 != nil {
+            return nil, false, nil
+        }
+    }
+    j1, _ := json.Marshal(a)
+    j2, _ := json.Marshal(b)
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    cmd := exec.CommandContext(ctx, "node", helper, string(j1), string(j2))
+    out, err := cmd.Output()
+    if err != nil {
+        return nil, false, nil
+    }
+    var v any
+    if len(out) == 0 {
+        return map[string]any{}, true, nil
+    }
+    if err := json.Unmarshal(out, &v); err != nil {
+        return nil, false, err
+    }
+    return v, true, nil
 }
 
 // InitializeScenario wires the step definitions.
@@ -188,6 +252,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
     ctx.Step(`^Diff:$`, s.givenDiff)
     ctx.Step(`^I apply the patch$`, s.whenIApplyThePatch)
     ctx.Step(`^the result equals:$`, s.thenTheResultEquals)
+    ctx.Step(`^JS compare is skipped$`, s.skipJS)
 }
 
 func TestBDDFeatures(t *testing.T) {
