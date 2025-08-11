@@ -9,6 +9,38 @@ import (
 
 // Json diff implementation ported from the Scala reference.
 
+// fastEqual performs optimized equality comparison for common JSON types
+func fastEqual(a, b any) bool {
+	// Try common cases first without reflection
+	switch av := a.(type) {
+	case string:
+		if bv, ok := b.(string); ok {
+			return av == bv
+		}
+	case float64:
+		if bv, ok := b.(float64); ok {
+			return av == bv
+		}
+	case bool:
+		if bv, ok := b.(bool); ok {
+			return av == bv
+		}
+	case nil:
+		return b == nil
+	case int:
+		if bv, ok := b.(int); ok {
+			return av == bv
+		}
+	case int64:
+		if bv, ok := b.(int64); ok {
+			return av == bv
+		}
+	}
+
+	// Fall back to reflection for complex types and type mismatches
+	return reflect.DeepEqual(a, b) && reflect.TypeOf(a) == reflect.TypeOf(b)
+}
+
 // Diff computes the JSON diff between two parsed JSON values and returns
 // an object (map) at the root. If there is no difference, an empty object is returned.
 func Diff(a, b any) map[string]any {
@@ -42,7 +74,7 @@ func diff(a, b any) any {
 	}
 
 	// Scalars or type mismatch
-	if reflect.DeepEqual(a, b) && reflect.TypeOf(a) == reflect.TypeOf(b) {
+	if fastEqual(a, b) {
 		return nil
 	}
 	return []any{a, b}
@@ -289,7 +321,7 @@ func doPatchMerge(vMap, vDiff any) (any, bool, bool) {
 	// Case: [old, new]
 	if arr, ok := vDiff.([]any); ok {
 		if len(arr) == 2 {
-			if reflect.DeepEqual(arr[0], vMap) {
+			if fastEqual(arr[0], vMap) {
 				return arr[1], true, false
 			}
 			// if old doesn't match, still replace with new
@@ -322,6 +354,7 @@ func asArray(v any) []any {
 	if a, ok := v.([]any); ok {
 		return a
 	}
+	// Return empty slice for non-array types to maintain compatibility
 	return []any{}
 }
 
@@ -329,6 +362,7 @@ func asMap(v any) map[string]any {
 	if m, ok := v.(map[string]any); ok {
 		return m
 	}
+	// Return empty map for non-object types to maintain compatibility
 	return map[string]any{}
 }
 
@@ -410,7 +444,7 @@ func applyArrayPatch(list []any, diff map[string]any) []any {
 			// find current index of val in res
 			cur := -1
 			for i := range res {
-				if reflect.DeepEqual(res[i], val) {
+				if fastEqual(res[i], val) {
 					cur = i
 					break
 				}
