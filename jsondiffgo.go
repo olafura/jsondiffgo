@@ -431,12 +431,14 @@ func parseArrayDiff(diff map[string]any) (map[int]struct{}, []moveOp, map[string
 				// jsondiffpatch move: ["", dest, 3]
 				if num, ok2 := toNumber(arr[1]); ok2 {
 					dest := int(num)
-					if src, err := strconv.Atoi(k[1:]); err == nil {
+					var src int
+					var err error
+					src, err = strconv.Atoi(k[1:])
+					if err == nil {
 						moves = append(moves, moveOp{src: src, dest: dest})
 						continue
-					} else {
-						return nil, nil, nil, err
 					}
+					return nil, nil, nil, err
 				}
 			}
 			// Unknown underscore op, keep in remaining
@@ -504,8 +506,6 @@ func applyArrayRemaining(res []any, remaining map[string]any) ([]any, error) {
 	for k, v := range remaining {
 		if idx, err := strconv.Atoi(k); err == nil {
 			ops = append(ops, kv{idx: idx, val: v})
-		} else {
-			// this is not a valid operation, but we will ignore it to maintain compatibility
 		}
 	}
 	// sort by idx
