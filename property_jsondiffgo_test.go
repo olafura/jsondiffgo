@@ -205,7 +205,7 @@ func FuzzRoundTripJSON(f *testing.F) {
 			// Not expected to fail; crash to file interesting cases
 			t.Fatalf("round-trip mismatch\ns1=%s\ns2=%s\ndiff=%v\npatched=%v", s1, s2, d, p)
 		}
-		})
+	})
 }
 
 func FuzzDiff(f *testing.F) {
